@@ -326,8 +326,13 @@ secondaryBackgroundColor = "#FFED9A"
 textColor = "#31333F"
 font = "sans serif"
 
+st.set_page_config(
+    page_title="Tugas 1 ASN",
+    page_icon="📊",
+)
+
 with st.sidebar:
-    selected = option_menu("TUGAS 1", ["Home", "Signal Processing","HRV Analysis","DWT"], default_index=0)
+    selected = option_menu("TUGAS 1", ["Home", "Signal Processing","HRV Analysis"], default_index=0)
 
 if selected == "Home":
    st.title('Project ASN Kelompok 6')
