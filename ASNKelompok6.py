@@ -324,6 +324,13 @@ st.set_page_config(
     page_icon="📊",
 )
 
+#[theme]
+primaryColor = "#FFD100"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#FFED9A"
+textColor = "#000000"
+font = "sans serif"
+
 with st.sidebar:
     selected = option_menu("TUGAS 1", ["Home", "Signal Processing","HRV Analysis"], default_index=0)
 
