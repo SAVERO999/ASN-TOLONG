@@ -324,6 +324,7 @@ with st.sidebar:
 
 if selected == "Home":
    st.title('Project ASN Kelompok 6')
+   st.title('Project ASN Kelompok 6')
    
    st.subheader("Anggota kelompok")
    new_title = '<p style="font-family:Georgia; color: black; font-size: 15px;">Afifah Hasnia Nur Rosita - 5023211007</p>'
