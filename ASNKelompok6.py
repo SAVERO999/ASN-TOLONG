@@ -319,13 +319,6 @@ y_hf = manual_interpolation(x_hf, fft_freq_total, np.abs(fft_result_total))
 
 
 #DISPLAY STREAMLIT
-#[theme]
-primaryColor = "#FFD100"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#FFED9A"
-textColor = "#31333F"
-font = "sans serif"
-
 st.set_page_config(
     page_title="Tugas 1 ASN",
     page_icon="📊",
@@ -336,13 +329,12 @@ with st.sidebar:
 
 if selected == "Home":
    st.title('Project ASN Kelompok 6')
-   
    st.subheader("Anggota kelompok")
-   new_title = '<p style="font-family:Georgia; color: black; font-size: 15px;">Afifah Hasnia Nur Rosita - 5023211007</p>'
+   new_title = '<p style="font-family:Georgia; color: black; font-size: 20px;">Afifah Hasnia Nur Rosita - 5023211007</p>'
    st.markdown(new_title, unsafe_allow_html=True)
-   new_title = '<p style="font-family:Georgia; color: black; font-size: 15px;">Syahdifa Aisyah Qurrata Ayun - 5023211032</p>'
+   new_title = '<p style="font-family:Georgia; color: black; font-size: 20px;">Syahdifa Aisyah Qurrata Ayun - 5023211032</p>'
    st.markdown(new_title, unsafe_allow_html=True)
-   new_title = '<p style="font-family:Georgia; color: black; font-size: 15px;">Sharfina Nabila Larasati - 5023211055</p>'
+   new_title = '<p style="font-family:Georgia; color: black; font-size: 20px;">Sharfina Nabila Larasati - 5023211055</p>'
    st.markdown(new_title, unsafe_allow_html=True)
 
    
@@ -830,30 +822,30 @@ if selected == "HRV Analysis":
              )
           st.plotly_chart(fig_segment)
 
-    if selected2 == 'Spectrum':
-     st.title('FFT Spectrum (Welchs periodogram)')
+       if selected2 == 'Spectrum':
+        st.title('FFT Spectrum (Welchs periodogram)')
           
-      #segmentation data
-     st.header("FFT Spectrum")
-     fig_segment = go.Figure(data=go.Scatter(x=fft_freq_total, y=np.abs(fft_result_total), mode='lines', line=dict(color='black', width=0.3)))
+        #segmentation data
+        st.header("FFT Spectrum")
+        fig_segment = go.Figure(data=go.Scatter(x=fft_freq_total, y=np.abs(fft_result_total), mode='lines', line=dict(color='black', width=0.3)))
 
-     # Add the filled regions for different frequency bands
-     fig_segment.add_trace(go.Scatter(x=x_vlf, y=y_vlf, fill='tozeroy', mode='none', fillcolor='rgba(166, 81, 216, 0.2)', name='VLF'))
-     fig_segment.add_trace(go.Scatter(x=x_lf, y=y_lf, fill='tozeroy', mode='none', fillcolor='rgba(81, 166, 216, 0.2)', name='LF'))
-     fig_segment.add_trace(go.Scatter(x=x_hf, y=y_hf, fill='tozeroy', mode='none', fillcolor='rgba(216, 166, 81, 0.2)', name='HF'))
+        # Add the filled regions for different frequency bands
+        fig_segment.add_trace(go.Scatter(x=x_vlf, y=y_vlf, fill='tozeroy', mode='none', fillcolor='rgba(166, 81, 216, 0.2)', name='VLF'))
+        fig_segment.add_trace(go.Scatter(x=x_lf, y=y_lf, fill='tozeroy', mode='none', fillcolor='rgba(81, 166, 216, 0.2)', name='LF'))
+        fig_segment.add_trace(go.Scatter(x=x_hf, y=y_hf, fill='tozeroy', mode='none', fillcolor='rgba(216, 166, 81, 0.2)', name='HF'))
 
-     # Update the layout
-     fig_segment.update_layout(
-     title="FFT Spectrum (Welch's periodogram)",
-     xaxis_title="Frequency (Hz)",
-     yaxis_title="Density",
-     xaxis=dict(showline=True, showgrid=True, range=[0, 0.5]),
-     yaxis=dict(showline=True, showgrid=True, range=[0, max(np.abs(fft_result_total))]),
-     legend=dict(title="Frequency Bands")
-     )
+        # Update the layout
+        fig_segment.update_layout(
+        title="FFT Spectrum (Welch's periodogram)",
+        xaxis_title="Frequency (Hz)",
+        yaxis_title="Density",
+        xaxis=dict(showline=True, showgrid=True, range=[0, 0.5]),
+        yaxis=dict(showline=True, showgrid=True, range=[0, max(np.abs(fft_result_total))]),
+        legend=dict(title="Frequency Bands")
+        )
 
-     # Plot the figure using Streamlit
-     st.plotly_chart(fig_segment)
+        # Plot the figure using Streamlit
+        st.plotly_chart(fig_segment)
 
     elif sub_selected == 'Non Liniear Analysis':
        new_title = '<p style="font-family:Georgia; color:black; font-size: 25px; text-align: center;">Non Liniear Analysis</p>'
