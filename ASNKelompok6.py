@@ -319,6 +319,13 @@ y_hf = manual_interpolation(x_hf, fft_freq_total, np.abs(fft_result_total))
 
 
 #DISPLAY STREAMLIT
+#[theme]
+primaryColor = "#FFD100"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#FFED9A"
+textColor = "#31333F"
+font = "sans serif"
+
 with st.sidebar:
     selected = option_menu("TUGAS 1", ["Home", "Signal Processing","HRV Analysis","DWT"], default_index=0)
 
