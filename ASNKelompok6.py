@@ -5,168 +5,289 @@ import plotly.graph_objs as go
 from streamlit_option_menu import option_menu
 import math
 import streamlit as st 
+from plotly.subplots import make_subplots
+import plotly.express as px
+
+
+df = pd.read_csv('dataecgvannofix.txt', sep='\s+', header=None)
+ecg_signal = df[df.columns[0]]
+
+# Calculate the number of samples
+N = len(ecg_signal)
+
+# Calculate the elapsed time
+sample_interval = np.arange(0, N)
+elapsed_time = sample_interval * (1/125)
+
+# Center the ECG signal by subtracting the mean
+y = ecg_signal/1e8
+
+def dirac(x):
+    if x == 0:
+        dirac_delta = 1
+    else:
+        dirac_delta = 0
+    result = dirac_delta
+    return result
+
+h = []
+g = []
+n_list = []
+for n in range(-2, 2):
+    n_list.append(n)
+    temp_h = 1/8 * (dirac(n-1) + 3*dirac(n) + 3*dirac(n+1) + dirac(n+2))
+    h.append(temp_h)
+    temp_g = -2 * (dirac(n) - dirac(n+1))
+    g.append(temp_g)
+
+import numpy as np
+Hw = np.zeros(20000)
+Gw = np.zeros(20000)
+i_list = []
+fs =125
+for i in range(0,fs + 1):
+    i_list.append(i)
+    reG = 0
+    imG = 0
+    reH = 0
+    imH = 0
+    for k in range(-2, 2):
+        reG = reG + g[k + abs(-2)] * np.cos(k * 2 * np.pi * i / fs)
+        imG = imG - g[k + abs(-2)] * np.sin(k * 2 * np.pi * i / fs)
+        reH = reH + h[k + abs(-2)] * np.cos(k * 2 * np.pi * i / fs)
+        imH = imH - h[k + abs(-2)] * np.sin(k * 2 * np.pi * i / fs)
+    temp_Hw = np.sqrt((reH*2) + (imH*2))
+    temp_Gw = np.sqrt((reG*2) + (imG*2))
+    Hw[i] = temp_Hw
+    Gw[i] = temp_Gw
+
+i_list = i_list[0:round(fs/2)+1]
+
+Q = np.zeros((9, round(fs/2) + 1))
+
+# Generate the i_list and fill Q with the desired values
+i_list = []
+for i in range(0, round(fs/2) + 1):
+    i_list.append(i)
+    Q[1][i] = Gw[i]
+    Q[2][i] = Gw[2*i] * Hw[i]
+    Q[3][i] = Gw[4*i] * Hw[2*i] * Hw[i]
+    Q[4][i] = Gw[8*i] * Hw[4*i] * Hw[2*i] * Hw[i]
+    Q[5][i] = Gw[16*i] * Hw[8*i] * Hw[4*i] * Hw[2*i] * Hw[i]
+    Q[6][i] = Gw[32*i] * Hw[16*i] * Hw[8*i] * Hw[4*i] * Hw[2*i] * Hw[i]
+    Q[7][i] = Gw[64*i] * Hw[32*i] * Hw[16*i] * Hw[8*i] * Hw[4*i] * Hw[2*i] * Hw[i]
+    Q[8][i] = Gw[128*i] * Hw[64*i] * Hw[32*i] * Hw[16*i] * Hw[8*i] * Hw[4*i] * Hw[2*i] * Hw[i]
+
+traces = []
 
 
 
+qj = np.zeros((6, 10000))
+k_list = []
+j = 1
 
-########
-column_names = ['ECG']
-data=pd.read_csv('ECG5minutes.txt',delimiter="\t", names=column_names)
-data["sample interval"] = np.arange(len(data))
-data["elapsed time"] = (data["sample interval"])*(1/200)
-x=data["elapsed time"]
-y=data["ECG" ] - (sum(data["ECG" ]/len(data["ECG"]))) #agar turun ke baseline
+# Calculations
+a = -(round(2*j) + round(2*(j-1)) - 2)
+b = -(1 - round(2**(j-1))) + 1
 
-fs=int(round(1/(data.iloc[1,2]-data.iloc[0,2])))
-jumlahdata = int(np.size(x))
+for k in range(a, b):
+    k_list.append(k)
+    qj[1][k + abs(a)] = -2 * (dirac(k) - dirac(k+1))
 
-#LPF
-fc_lpf = 11
-fc_lpf=float(fc_lpf)
+k_list = []
+j= 2
+a = -(round (2*j) + round (2*(j-1)) - 2 )
+b=-(1- round(2**(j-1)))+1
+for k in range (a,b):
+  k_list.append(k)
+  qj[2][k+abs(a)] = -1/4* ( dirac(k-1) + 3*dirac(k)  + 2*dirac(k+1)  - 2*dirac(k+2) - 3*dirac(k+3) - dirac(k+4))
 
-lpf_ecg = np.zeros(jumlahdata) 
-for n in range(3):
-    lpf_ecg[-n] = lpf_ecg[0]
-    y[-n] = y[0]
 
-# Coefficients of LPF
-T = 1 / fs
-w = 2 * math.pi * fc_lpf
-a0 = w**2
-a1 = 2*(w**2)
-b1 = (8/(T**2)) - (2*(w**2))
-C0 = ((4/(T**2)) - ((2 * (math.sqrt(2))*w)/T) + (w**2))
-C1 = ((4/(T**2)) + ((2 * (math.sqrt(2))*w)/T) + (w**2))
+k_list = []
+j=3
+a=-(round(2*j) + round(2*(j-1))-2)
+b = - (1 - round(2**(j-1))) + 1
+for k in range (a,b):
+  k_list.append(k)
+  qj[3][k+abs(a)] = -1/32*(dirac(k-3) + 3*dirac(k-2) + 6*dirac(k-1) + 10*dirac(k)
+  + 11*dirac(k+1) + 9*dirac(k+2) + 4*dirac(k+3) - 4*dirac(k+4) - 9*dirac(k+5)
+  - 11*dirac(k+6) - 10*dirac(k+7) - 6*dirac(k+8) - 3*dirac(k+9) - dirac(k+10))
 
-# BUTTERWORTH LOWPASS FILTER EQUATION
-for n in range(jumlahdata):
-    lpf_ecg[n] = ((b1 * lpf_ecg[n-1]) - (C0 * lpf_ecg[n-2]) + (a0 * y[n]) + (a1 * y[n-1]) + (a0 * y[n-2])) / C1
-#fc_hpf =input("FREQUENCY CUT-OFF FOR HIGHPASS FILTER :")
-fc_hpf = 5
-fc_hpf=float(fc_hpf)
+k_list = []
+j=4
+a=-(round(2*j) + round(2*(j-1))-2)
+b = - (1 - round(2**(j-1))) + 1
 
-#HPF
-hpf_ecg = np.zeros(np.size(lpf_ecg))
-for n in range(3):
-    hpf_ecg[-n] = hpf_ecg[0]
+for k in range (a,b):
+  k_list.append(k)
+  qj [4][k+abs(a)] = -1/256*(dirac(k-7) + 3*dirac(k-6) + 6*dirac(k-5) + 10*dirac(k-4) + 15*dirac (k-3)
+  + 21*dirac(k-2) + 28*dirac(k-1) + 36*dirac(k) + 41*dirac(k+1) + 43*dirac(k+2)
+  + 42*dirac(k+3) + 38*dirac(k+4) + 31*dirac(k+5) + 21*dirac(k+6) + 8*dirac(k+7)
+  - 8*dirac(k+8) - 21*dirac(k+9) - 31*dirac(k+10) - 38*dirac(k+11) - 42*dirac(k+12)
+  - 43*dirac(k+13) - 41*dirac(k+14) - 36*dirac(k+15) - 28*dirac(k+16) - 21*dirac(k+17)
+  - 15*dirac(k+18) - 10*dirac(k+19) - 6*dirac(k+20) - 3*dirac(k+21) - dirac(k+22))
 
-# Coefficients of LPF
-T = 1 / fs
-w = 2 * math.pi * fc_hpf
-e0 = 4*T
-e1 = 8*T
-e2 = 4*T
-d0 = ((2*(w**2)*(T**2))-8)
-d1 = (((w**2)*(T**2)) - (2 * (math.sqrt(2)) * T * w)+4)
-d2 = (((w**2)*(T**2)) + (2 * (math.sqrt(2)) * T* w)+4)
-# BUTTERWORTH LOWPASS FILTER EQUATION
-for n in range(np.size(lpf_ecg)):
-    hpf_ecg[n] = ((e0 * lpf_ecg[n]) - (e1 * lpf_ecg[n-1]) +(e2 * lpf_ecg[n-2])-(d0 * hpf_ecg[n-1])- (d1 * hpf_ecg[n-2]))/ d2
+k_list = []
+j=5
+a=-(round(2*j) + round(2*(j-1))-2)
+b = - (1 - round(2**(j-1))) + 1
+for k in range (a,b):
+  k_list.append(k)
+  qj[5][k+abs(a)] = -1/(512)*(dirac(k-15) + 3*dirac(k-14) + 6*dirac(k-13) + 10*dirac(k-12) + 15*dirac(k-11) + 21*dirac(k-10)
++ 28*dirac(k-9) + 36*dirac(k-8) + 45*dirac(k-7) + 55*dirac(k-6) + 66*dirac(k-5) + 78*dirac(k-4)
++ 91*dirac(k-3) + 105*dirac(k-2) + 120*dirac(k-1) + 136*dirac(k) + 149*dirac(k+1) + 159*dirac(k+2)
++ 166*dirac(k+3) + 170*dirac(k+4) + 171*dirac(k+5) + 169*dirac(k+6) + 164*dirac(k+7) + 156*dirac(k+8)
++ 145*dirac(k+9) + 131*dirac(k+10) + 114*dirac(k+11) + 94*dirac(k+12) + 71*dirac(k+13) + 45 *dirac(k+14)
++ 16*dirac(k+15) - 16*dirac(k+16) - 45*dirac(k+17) - 71*dirac(k+18) - 94*dirac(k+19) - 114*dirac (k+20)
+- 131*dirac(k+21) - 145*dirac(k+22) - 156*dirac(k+23) - 164*dirac(k+24) - 169*dirac(k+25)
+- 171*dirac(k+26) - 170*dirac(k+27) - 166*dirac(k+28) - 159*dirac(k+29) - 149*dirac(k+30)
+- 136*dirac(k+31) - 120*dirac(k+32) - 105*dirac(k+33) - 91*dirac(k+34) - 78*dirac(k+35)
+- 66*dirac(k+36) - 55*dirac(k+37) - 45*dirac(k+38) - 36*dirac(k+39) - 28*dirac(k+40)
+- 21*dirac(k+41) - 15*dirac(k+42) - 10*dirac(k+43) - 6*dirac(k+44) - 3*dirac(k+45)
+- dirac(k+46))
 
-#DERIVATIVE
-drv=np.zeros(np.size(hpf_ecg))
-for n in range (np.size(hpf_ecg)-2):
-   drv[n]= (1/8)*(-(hpf_ecg[n-2]) - (2*hpf_ecg[n-1]) + (2*hpf_ecg[n+1]) + (hpf_ecg[n+2]))
+k_list = []
+j=5
+a=-(round(2*j) + round(2*(j-1))-2)
+b = - (1 - round(2**(j-1))) + 1
+for k in range (a,b):
+  k_list.append(k)
+  qj[5][k+abs(a)] = -1/(512)*(dirac(k-15) + 3*dirac(k-14) + 6*dirac(k-13) + 10*dirac(k-12) + 15*dirac(k-11) + 21*dirac(k-10)
++ 28*dirac(k-9) + 36*dirac(k-8) + 45*dirac(k-7) + 55*dirac(k-6) + 66*dirac(k-5) + 78*dirac(k-4)
++ 91*dirac(k-3) + 105*dirac(k-2) + 120*dirac(k-1) + 136*dirac(k) + 149*dirac(k+1) + 159*dirac(k+2)
++ 166*dirac(k+3) + 170*dirac(k+4) + 171*dirac(k+5) + 169*dirac(k+6) + 164*dirac(k+7) + 156*dirac(k+8)
++ 145*dirac(k+9) + 131*dirac(k+10) + 114*dirac(k+11) + 94*dirac(k+12) + 71*dirac(k+13) + 45 *dirac(k+14)
++ 16*dirac(k+15) - 16*dirac(k+16) - 45*dirac(k+17) - 71*dirac(k+18) - 94*dirac(k+19) - 114*dirac (k+20)
+- 131*dirac(k+21) - 145*dirac(k+22) - 156*dirac(k+23) - 164*dirac(k+24) - 169*dirac(k+25)
+- 171*dirac(k+26) - 170*dirac(k+27) - 166*dirac(k+28) - 159*dirac(k+29) - 149*dirac(k+30)
+- 136*dirac(k+31) - 120*dirac(k+32) - 105*dirac(k+33) - 91*dirac(k+34) - 78*dirac(k+35)
+- 66*dirac(k+36) - 55*dirac(k+37) - 45*dirac(k+38) - 36*dirac(k+39) - 28*dirac(k+40)
+- 21*dirac(k+41) - 15*dirac(k+42) - 10*dirac(k+43) - 6*dirac(k+44) - 3*dirac(k+45)
+- dirac(k+46))
 
-# SQUARING PROCEDURE METHOD
-sqr=np. zeros(np.size(drv) )
-for n in range (np.size(drv)):
-  sqr[n]=(drv[n])**2
-# MAV PROCEDURE METHOD
-w = 10 
-mav = np.zeros(np.size(sqr))
-for n in range(np.size(sqr)):
-    for i in range(w):
-        mav[n] = mav[n] + sqr[n - i]
-    mav[n] = mav[n] / w
-tinggi=0
-tinggi=np.zeros(np.size(mav))
-for n in range (np. size(mav) -1): 
-    if (tinggi < mav[n]) .all():
-      tinggi [n]=mav[n]
+T1= round (2**(1-1))-1
+T2 = round(2** (2-1)) - 1
+T3 = round(2** (3-1)) - 1
+T4 = round(2**(4-1)) - 1
+T5 = round(2**(5-1))- 1
+Delay1= T5-T1
+Delay2= T5-T2
+Delay3= T5-T3
+Delay4= T5-T4
+Delay5= T5-T5
 
-thr=tinggi*0.5
-thrqrs=np.zeros(np.size(mav))
-for n in range (np. size(mav)-1):
-  if (mav[n] >= thr).all():
-     thrqrs [n]=1
-  elif (mav[n]<thr).all():
-    thrqrs [n]=0
-      
-#NUMBERS OF R TO R CALCULATIONS
+ecg=y
+
+min_n = 0 * fs
+max_n = 8 * fs 
+
+
+def process_ecg(min_n, max_n, ecg, g, h):
+    w2fm = np.zeros((5, max_n - min_n + 1))
+    s2fm = np.zeros((5, max_n - min_n + 1))
+
+    for n in range(min_n, max_n + 1):
+        for j in range(1, 6):
+            w2fm[j-1, n - min_n] = 0
+            s2fm[j-1, n - min_n] = 0
+            for k in range(-1, 3):
+                index = round(n - 2**(j-1) * k)
+                if 0 <= index < len(ecg):  # Ensure the index is within bounds
+                    w2fm[j-1, n - min_n] += g[k+1] * ecg[index]  # g[k+1] to match Pascal's array index starting from -1
+                    s2fm[j-1, n - min_n] += h[k+1] * ecg[index]  # h[k+1] to match Pascal's array index starting from -1
+
+    return w2fm, s2fm
+
+# Compute w2fm and s2fm
+w2fm, s2fm = process_ecg(min_n, max_n, ecg, g, h)
+
+# Prepare data for plotting
+n_values = np.arange(min_n, max_n + 1)
+w2fm_values = [w2fm[i, :] for i in range(5)]  # Equivalent to w2fm[1,n] to w2fm[5,n] in original code (0-based index)
+s2fm_values = [s2fm[i, :] for i in range(5)]  # Equivalent to s2fm[1,n] to s2fm[5,n] in original code (0-based index)
+
+w2fb = np.zeros((6, len(ecg) + T5))
+
+
+n_list = list(range(len(ecg)))
+
+# Perform calculations
+for n in n_list:
+    for j in range(1, 6):
+        w2fb[1][n + T1] = 0
+        w2fb[2][n + T2] = 0
+        w2fb[3][n + T3] = 0
+        a = -(round(2*j) + round(2*(j - 1)) - 2)
+        b = -(1 - round(2**(j - 1)))
+        for k in range(a, b + 1):
+            index = n - (k + abs(a))
+            if 0 <= index < len(ecg):
+                w2fb[3][n + T3] += qj[3][k + abs(a)] * ecg[index]
+
+# Create and display plots for each DWT level
+figs = []
+n = np.arange(1000)
+
+gradien1 = np.zeros(len(ecg))
+gradien2 = np.zeros(len(ecg))
+gradien3 = np.zeros(len(ecg))
+
+# Define delay
+delay = T3
+
+# Compute gradien3
+N = len(ecg)
+for k in range(delay, N - delay):
+    gradien3[k] = w2fb[3][k - delay] - w2fb[3][k + delay]
+hasil_QRS = np.zeros(len(elapsed_time))
+for i in range(N):
+    if (gradien3[i] > 1.8):
+        hasil_QRS[i-(T4+1)] = 5
+    else:
+        hasil_QRS[i-(T4+1)] = 0
+        
 ptp = 0
-waktu = np.zeros(np.size(thrqrs))
-selisih = np.zeros(np.size(thrqrs))
+waktu = np.zeros(np.size(hasil_QRS))
+selisih = np.zeros(np.size(hasil_QRS))
 
-for n in range(np.size(thrqrs) - 1):
-    if thrqrs[n] < thrqrs[n + 1]:
+for n in range(np.size(hasil_QRS) - 1):
+    if hasil_QRS[n] < hasil_QRS[n + 1]:
         waktu[ptp] = n / fs;
         selisih[ptp] = waktu[ptp] - waktu[ptp - 1]
         ptp += 1
+
 ptp = ptp - 1
 
-#CALCULATION OF THE AMOUNT OF R
 j = 0
-peak = np.zeros(np.size(thrqrs))
-for n in range(np.size(thrqrs)-1):
-    if thrqrs[n] == 1 and thrqrs[n-1] == 0:
+peak = np.zeros(np.size(hasil_QRS))
+for n in range(np.size(hasil_QRS)-1):
+    if hasil_QRS[n] == 5 and hasil_QRS[n-1] == 0:
         peak[j] = n
         j += 1
 
-
-
-#BPM CALCULATIONS':
 temp = 0
-interval = np.zeros(np.size(thrqrs))
-BPM = np.zeros(np.size(thrqrs))
+interval = np.zeros(np.size(hasil_QRS))
+BPM = np.zeros(np.size(hasil_QRS))
 
 for n in range(ptp):
     interval[n] = (peak[n] - peak[n-1]) * (1/fs)
     BPM[n] = 60 / interval[n]
     temp = temp+BPM[n]
     rata = temp / (n - 1)
-    
-#TIME DOMAIN
-RR_SDNN=0
-for n in range (ptp):
-   RR_SDNN += (((selisih[n])-(60/rata))**2)
-
-SDNN = math.sqrt (RR_SDNN/ (ptp-1))
-
-RR_RMSSD=0
-for n in range (ptp):
-   RR_RMSSD += ((selisih[n+1]-selisih[n])**2)
-RMSSD =  math. sqrt (RR_RMSSD/(ptp-1))
-
-# FIND NN50 ALGORITHM
-NN50 = 0
-
-for n in range (ptp): 
-    if (abs(selisih[n+1]-selisih[n])>0.05):
-      NN50 +=1
-pNN50 = (NN50/ (ptp-1)) *100 
-
-dif = 0
-for n in range (ptp):
-  dif += abs(selisih[n]-selisih[n+1])
-RRdif = dif/(ptp-1)
-
-RR_SDSD = 0
-for n in range (ptp):
-  RR_SDSD += (((abs(selisih[n]-selisih[n+1]))-RRdif)**2)
-SDSD = math.sqrt(RR_SDSD/(ptp-2))
 
 bpm_rr = np.zeros(ptp)
 for n in range (ptp):
   bpm_rr[n] = 60/selisih[n]
   if bpm_rr [n]>100:
     bpm_rr[n]=rata
-
 n = np. arange(0,ptp,1,dtype=int)
 
-bpm_rr_baseline = bpm_rr - 70
+#normalisasi tachogram
+bpm_rr_baseline = bpm_rr -22
 
-# Fungsi Fourier Transform dan perhitungan frekuensi
+# Plotting dengan Plotly
+n = np.arange(0, ptp, 1, dtype=int)
+
 def fourier_transform(signal):
     N = len(signal)
     fft_result = np.zeros(N, dtype=complex)
@@ -178,161 +299,83 @@ def fourier_transform(signal):
 def calculate_frequency(N, sampling_rate):
     return np.arange(N) * sampling_rate / N
 
-sampling_rate = 1
+sampling_rate = 1  # Example sampling rate
 
-# Subset 0-50
-n_subset = n[0:50]
-bpm_rr_baseline_subset = bpm_rr_baseline[0:50]
-M = len(bpm_rr_baseline_subset) - 1
-hamming_window = np.zeros(M+1)
-for i in range(M+1):
-    hamming_window[i] = 0.54 - 0.46 * np.cos(2 * np.pi * i / M)
-bpm_rr_baseline_windowed = bpm_rr_baseline_subset * hamming_window
-fft_result = fourier_transform(bpm_rr_baseline_windowed) # Compute Fourier Transform
-sampling_rate = 1
-fft_freq = calculate_frequency(len(bpm_rr_baseline_windowed), sampling_rate)
-half_point = len(fft_freq) // 2
-fft_freq_half = fft_freq[:half_point]
-fft_result_half = fft_result[:half_point]
+fft_results_dict = {}
 
-# Subset 50-100
-n_subset1 = n[50:100]
-bpm_rr_baseline_subset1 = bpm_rr_baseline[50:100]
-M1 = len(bpm_rr_baseline_subset1) -1
-hamming_window1 = np.zeros(M1+1)
-for i in range(M1+1):
-    hamming_window1[i] = 0.54 - 0.46 * np.cos(2 * np.pi * i /M1 )
-bpm_rr_baseline_windowed1 = bpm_rr_baseline_subset1 * hamming_window1
-fft_result1 = fourier_transform(bpm_rr_baseline_windowed1)
-fft_freq1 = calculate_frequency(len(bpm_rr_baseline_windowed1), sampling_rate)
-half_point1 = len(fft_freq1) // 2
-fft_freq_half1 = fft_freq1[:half_point1]
-fft_result_half1 = fft_result1[:half_point1]
+# Define a list of colors
+colors = ['blue', 'red', 'green', 'purple', 'orange', 'brown', 'pink']
 
-# Subset 100-150
-n_subset2 = n[100:150]
-bpm_rr_baseline_subset2 = bpm_rr_baseline[100:150]
+# Loop for 7 subsets
+for i in range(7):
+    start_index = i * 20
+    end_index = start_index + 320
 
-M2 = len(bpm_rr_baseline_subset2) - 1
-hamming_window2 = np.zeros(M2+1)
-for i in range(M2+1):
-    hamming_window2[i] = 0.54 - 0.46 * np.cos(2 * np.pi * i / M2)
-bpm_rr_baseline_windowed2 = bpm_rr_baseline_subset2 * hamming_window2
+    n_subset = n[start_index:end_index]
+    bpm_rr_baseline_subset = bpm_rr_baseline[start_index:end_index]
 
-fft_result2 = fourier_transform(bpm_rr_baseline_windowed2)
-fft_freq2 = calculate_frequency(len(bpm_rr_baseline_windowed2), sampling_rate)
-half_point2 = len(fft_freq2) // 2
-fft_freq_half2 = fft_freq2[:half_point2]
-fft_result_half2 = fft_result2[:half_point2]
+    M = len(bpm_rr_baseline_subset) - 1
 
-# Subset 150-200
-n_subset3 = n[150:200]
-bpm_rr_baseline_subset3 = bpm_rr_baseline[150:200]
+    hamming_window = np.zeros(M + 1)
+    for j in range(M + 1):
+        hamming_window[j] = 0.54 - 0.46 * np.cos(2 * np.pi * j / M)
 
-M3 = len(bpm_rr_baseline_subset3) - 1
-hamming_window3 = np.zeros(M3+1)
-for i in range(M3+1):
-    hamming_window3[i] = 0.54 - 0.46 * np.cos(2 * np.pi * i / M3)
-bpm_rr_baseline_windowed3 = bpm_rr_baseline_subset3 * hamming_window3
+    bpm_rr_baseline_windowed = bpm_rr_baseline_subset * hamming_window
 
-fft_result3 = fourier_transform(bpm_rr_baseline_windowed3)
-fft_freq3 = calculate_frequency(len(bpm_rr_baseline_windowed3), sampling_rate)
-half_point3 = len(fft_freq3) // 2
-fft_freq_half3 = fft_freq3[:half_point3]
-fft_result_half3 = fft_result3[:half_point3]
+    fft_result = fourier_transform(bpm_rr_baseline_windowed)
+    fft_freq = calculate_frequency(len(bpm_rr_baseline_windowed), sampling_rate)
 
-# Subset 200-250
-n_subset4 = n[201:251]
-bpm_rr_baseline_subset4 = bpm_rr_baseline[201:251]
+    half_point = len(fft_freq) // 2
+    fft_freq_half = fft_freq[:half_point]
+    fft_result_half = fft_result[:half_point]
 
-M4 = len(bpm_rr_baseline_subset4) - 1
-hamming_window4 = np.zeros(M4+1)
-for i in range(M4+1):
-    hamming_window4[i] = 0.54 - 0.46 * np.cos(2 * np.pi * i / M4)
-bpm_rr_baseline_windowed4 = bpm_rr_baseline_subset4 * hamming_window4
+    # Store fft_result_half in the dictionary
+    fft_results_dict[f'fft_result{i+1}'] = fft_result_half
+    
+min_length = min(len(fft_result) for fft_result in fft_results_dict.values())
 
-fft_result4 = fourier_transform(bpm_rr_baseline_windowed4)
-fft_freq4 = calculate_frequency(len(bpm_rr_baseline_windowed4), sampling_rate)
-half_point4 = len(fft_freq4) // 2
-fft_freq_half4 = fft_freq4[:half_point4]
-fft_result_half4 = fft_result4[:half_point4]
+# Truncate all FFT results to the minimum length
+for key in fft_results_dict:
+    fft_results_dict[key] = fft_results_dict[key][:min_length]
 
-# Subset 250-300
-n_subset5 = n[251:301]
-bpm_rr_baseline_subset5 = bpm_rr_baseline[251:301]
-
-M5 = len(bpm_rr_baseline_subset5) - 1
-hamming_window5 = np.zeros(M5+1)
-for i in range(M5+1):
-    hamming_window5[i] = 0.54 - 0.46 * np.cos(2 * np.pi * i / M5)
-bpm_rr_baseline_windowed5 = bpm_rr_baseline_subset5 * hamming_window5
-
-fft_result5 = fourier_transform(bpm_rr_baseline_windowed5)
-fft_freq5 = calculate_frequency(len(bpm_rr_baseline_windowed5), sampling_rate)
-half_point5 = len(fft_freq5) // 2
-fft_freq_half5 = fft_freq5[:half_point5]
-fft_result_half5 = fft_result5[:half_point5]
-
-# Subset 300-350
-n_subset6 = n[300:350]
-bpm_rr_baseline_subset6 = bpm_rr_baseline[300:350]
-
-M6 = len(bpm_rr_baseline_subset6) - 1
-hamming_window6 = np.zeros(M6+1)
-for i in range(M6+1):
-    hamming_window6[i] = 0.54 - 0.46 * np.cos(2 * np.pi * i / M6)
-bpm_rr_baseline_windowed6 = bpm_rr_baseline_subset6 * hamming_window6
-
-fft_result6 = fourier_transform(bpm_rr_baseline_windowed6)
-fft_freq6 = calculate_frequency(len(bpm_rr_baseline_windowed6), sampling_rate)
-half_point6 = len(fft_freq6) // 2
-fft_freq_half6 = fft_freq6[:half_point6]
-fft_result_half6 = fft_result6[:half_point6]
-
-#FFT TOTAL
-FFT_TOTAL = (fft_result + fft_result1 +  fft_result2 + fft_result3 + fft_result4 + fft_result5 + fft_result6)/7
-FFT_FREQ_TOTAL = (fft_freq + fft_freq1 + fft_freq2 +  fft_freq3 +  fft_freq4 +  fft_freq5 +  fft_freq6)/7
-
-half_point_total = len(FFT_FREQ_TOTAL) // 2
-fft_freq_total = FFT_FREQ_TOTAL[:half_point_total]
-fft_result_total = FFT_TOTAL[:half_point_total]
-
-#FFT SPECTRUM
-def manual_interpolation(x, xp, fp):
-    return np.interp(x, xp, fp)
+# Average the FFT results
+FFT_TOTAL = sum(fft_results_dict[key] for key in fft_results_dict) / len(fft_results_dict)
+fft_freq_half = fft_freq_half[:min_length]  # Truncate frequency array to match
 
 # Frequency bands
-#x_ulf = np.linspace(0.0001, 0.003, 99)
 x_vlf = np.linspace(0.003, 0.04, 99)
 x_lf = np.linspace(0.04, 0.15, 99)
 x_hf = np.linspace(0.15, 0.4, 99)
 
-# Compute the interpolated values manually
-#y_ulf = manual_interpolation(x_ulf, fft_freq_total, np.abs(fft_result_total))
-y_vlf = manual_interpolation(x_vlf, fft_freq_total, np.abs(fft_result_total))
-y_lf = manual_interpolation(x_lf, fft_freq_total, np.abs(fft_result_total))
-y_hf = manual_interpolation(x_hf, fft_freq_total, np.abs(fft_result_total))
+# Interpolation
+def manual_interpolation(x, xp, fp):
+    return np.interp(x, xp, fp)
+
+y_vlf = manual_interpolation(x_vlf, fft_freq_half, np.abs(FFT_TOTAL))
+y_lf = manual_interpolation(x_lf, fft_freq_half, np.abs(FFT_TOTAL))
+y_hf = manual_interpolation(x_hf, fft_freq_half, np.abs(FFT_TOTAL))
+
+def trapezoidal_rule(y, x):
+    return np.sum((x[1:] - x[:-1]) * (y[1:] + y[:-1]) / 2)
+
+# Hitung Total Power (TP) menggunakan metode trapesium manual
+TP = trapezoidal_rule(np.abs(FFT_TOTAL), fft_freq_half)
+
+# Hitung nilai VLF, LF, dan HF menggunakan metode trapesium manual
+VLF = trapezoidal_rule(y_vlf, x_vlf)
+LF = trapezoidal_rule(y_lf, x_lf)
+HF = trapezoidal_rule(y_hf, x_hf)
+
+tp = VLF + LF + HF
+# Hitung LF dan HF yang dinormalisasi
+LF_norm = LF / (tp - VLF)
+HF_norm = HF / (tp- VLF)
+LF_HF = LF / HF
 
 
-
-
-
-
-#DISPLAY STREAMLIT
-st.set_page_config(
-    page_title="Tugas 1 ASN",
-    page_icon="📊",
-)
-
-#[theme]
-primaryColor = "#FFD100"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#FFED9A"
-textColor = "#000000"
-font = "sans serif"
 
 with st.sidebar:
-    selected = option_menu("TUGAS 1", ["Home", "Signal Processing","HRV Analysis"], default_index=0)
+    selected = option_menu("FP", ["Home", "DWT","Zeros Crossing","QRS Detection","Frekuensi Domain"], default_index=0)
 
 if selected == "Home":
    st.title('Project ASN Kelompok 6')
@@ -343,566 +386,175 @@ if selected == "Home":
    st.markdown(new_title, unsafe_allow_html=True)
    new_title = '<p style="font-family:Georgia; color: black; font-size: 20px;">Sharfina Nabila Larasati - 5023211055</p>'
    st.markdown(new_title, unsafe_allow_html=True)
+  
 
-   
 
-if selected == "Signal Processing":
-    selected1 = option_menu(None, ["Data & Graphic", "Filter","Method & Calculation"], 
-    menu_icon="cast", default_index=0, orientation="horizontal")
-    
-    if selected1 == 'Data & Graphic':
-        st.title('Data & Graphic Input')
-        st.header("Data Input")
-        st.write(data)
-
-        # Create the figure with Plotly
-        fig = go.Figure(data=go.Scatter(x=x[0:2000], y=y[0:2000], mode='lines'))
-        fig.update_layout(
-            title="Original Signal",
-            xaxis_title="Elapsed Time",
-            yaxis_title="Amplitude (mV)",
-            xaxis=dict(showline=True, showgrid=True),
-            yaxis=dict(showline=True, showgrid=True),
-            
-        )
-        
-        # Display the figure in Streamlit
-        st.header("Graphic Input")
-        st.plotly_chart(fig) 
-        
-        
-        new_title = '<p style="font-family:Georgia; color: black; font-size: 20px;">Nilai FS</p>'
-        st.markdown(new_title, unsafe_allow_html=True)
-        st.write(fs)
-        new_title = '<p style="font-family:Georgia; color: black; font-size: 20px;">Jumlah Semua Data</p>'
-        st.markdown(new_title, unsafe_allow_html=True)
-        st.write(jumlahdata)
-    elif selected1 == 'Filter':
-        st.header("LPF")
-
-        fig_LPF = go.Figure(data=go.Scatter(x=x[0:2000], y=lpf_ecg[0:1000], mode='lines'))
-        fig_LPF.update_layout(
-            title="LPF",
-            xaxis_title="Sequence (n)",
-            yaxis_title="Amplitude",
-            xaxis=dict(showline=True, showgrid=True),
-            yaxis=dict(showline=True, showgrid=True),
-            template='plotly_dark'
-
-         )
-        st.plotly_chart(fig_LPF)
-    
-        st.header("HPF")
-        fig_HPF = go.Figure(data=go.Scatter(x=x[0:2000], y=hpf_ecg[0:1000], mode='lines'))
-        fig_HPF.update_layout(
-            title="HPF",
-            xaxis_title="Sequence (n)",
-            yaxis_title="Amplitude",
-            xaxis=dict(showline=True, showgrid=True),
-            yaxis=dict(showline=True, showgrid=True),
-            template='plotly_dark'
-         )
-        st.plotly_chart(fig_HPF)
-    elif selected1 == 'Method & Calculation':
-     optimizer_options = ['', 'Derivative', 'Squaring', 'Moving Average', 'Thresholding','Calculation']
-     selected_optimizer = st.selectbox('Method & Calculation', optimizer_options)
-
-     if selected_optimizer == 'Derivative':
-        fig_DRV = go.Figure(data=go.Scatter(x=x[9:1000], y=drv[0:1000], mode='lines'))
-        fig_DRV.update_layout(
-            title="DERIVATIVE",
-            xaxis_title="Sequence (n)",
-            yaxis_title="Amplitude",
-            xaxis=dict(showline=True, showgrid=True),
-            yaxis=dict(showline=True, showgrid=True),
-            template='plotly_dark'
-        )
-        st.header("DERIVATIVE")
-        st.plotly_chart(fig_DRV)
-     elif selected_optimizer == 'Squaring':
-        fig_sqr = go.Figure(data=go.Scatter(x=x[0:1000], y=sqr[0:1000], mode='lines'))
-        fig_sqr.update_layout(
-            title="SQUARING",
-            xaxis_title="Sequence (n)",
-            yaxis_title="Amplitude",
-            xaxis=dict(showline=True, showgrid=True),
-            yaxis=dict(showline=True, showgrid=True),
-            template='plotly_dark'
-        )
-        st.header("SQUARING")
-        st.plotly_chart(fig_sqr)
-     elif selected_optimizer == 'Moving Average':
-        fig_mav = go.Figure(data=go.Scatter(x=x[0:1000], y=mav[0:1000], mode='lines'))
-        fig_mav.update_layout(
-            title="MAV",
-            xaxis_title="Time",
-            yaxis_title="Amplitude",
-            xaxis=dict(showline=True, showgrid=True),
-            yaxis=dict(showline=True, showgrid=True),
-            template='plotly_dark'
-        )
-        st.header("MAV")
-        st.plotly_chart(fig_mav)
-     elif selected_optimizer == 'Thresholding':
-        fig = go.Figure(data=go.Scatter(x=x[0:4000], y=y[0:4000], mode='lines'))
-        fig.update_layout(
-            title="RAW SIGNAL",
-            xaxis_title="Elapsed Time",
-            yaxis_title="Amplitude (mV)",
-            xaxis=dict(showline=True, showgrid=True),
-            yaxis=dict(showline=True, showgrid=True),
-            template='plotly_dark'
-        )
-        st.subheader("THRESHOLDING")
-        st.plotly_chart(fig)
-
-        fig = go.Figure(data=go.Scatter(x=x[0:4000], y=thrqrs[0:4000], mode='lines'))
-        fig.update_layout(
-            title="SIGNAL THRESHOLD",
-            xaxis_title="Time",
-            yaxis_title="Amplitude",
-            xaxis=dict(showline=True, showgrid=True),
-            yaxis=dict(showline=True, showgrid=True),
-            template='plotly_dark'
-        )
-        st.plotly_chart(fig)
-     elif selected_optimizer == 'Calculation':
-            new_title = '<p style="font-family:Georgia; color: black; font-size: 15px;">NUMBERS OF R TO R CALCULATIONS</p>'
-            st.markdown(new_title, unsafe_allow_html=True)          
-            st.write(ptp)
-            new_title = '<p style="font-family:Georgia; color: black; font-size: 15px;">CALCULATION OF THE AMOUNT OF R</p>'
-            st.markdown(new_title, unsafe_allow_html=True)
-            st.write(j)
-            new_title = '<p style="font-family:Georgia; color: black; font-size: 15px;">BPM CALCULATIONS</p>'
-            st.markdown(new_title, unsafe_allow_html=True)
-            st.write(rata)
-if selected == "HRV Analysis":
-    sub_selected = st.sidebar.radio(
-        "Pilih Metode HRV Analysis",
-        ["Time Domain Analysis", "Frequency Domain Analysis", "Non Liniear Analysis"],
+if selected == "DWT":
+   sub_selected = st.sidebar.radio(
+        "",
+        ["Input Data","Filter Coeffs", "Mallat", "Filter Bank"],
         index=0
     )
 
-    if sub_selected == 'Time Domain Analysis':
-        new_title = '<p style="font-family:Georgia; color:black; font-size: 25px; text-align: center;">Time Domain Analysis</p>'
-        st.markdown(new_title, unsafe_allow_html=True)
-        optimizer_options1 = ['','SDNN', 'RMSSD', "pNN50", "SDSD"]
-        selected_optimizer1 = st.selectbox('Time-domain analysis', optimizer_options1)
-
-        if selected_optimizer1 == 'SDNN':
-            st.write(SDNN)
-        elif selected_optimizer1 == 'RMSSD':
-            st.write(RMSSD)
-        elif selected_optimizer1 == 'pNN50':
-            st.write(pNN50)
-        elif selected_optimizer1 == 'SDSD':
-            st.write(SDSD)
-        ########
-        fig_Tachogram = go.Figure(data=go.Scatter(x=n, y=bpm_rr, mode='lines'))
-        fig_Tachogram.update_layout(
-            title="TACHOGRAM",
-            xaxis_title="n",
-            yaxis_title="BPM",
-            xaxis=dict(showline=True, showgrid=True),
-            yaxis=dict(showline=True, showgrid=True)
-        )
-        st.plotly_chart(fig_Tachogram)
-
-        fig_histogram = go.Figure(data=go.Histogram(x=bpm_rr, nbinsx=ptp))
-
-        fig_histogram.update_layout(
-            title="Histogram Interval RR",
-            xaxis_title="Interval RR",
-            yaxis_title="Banyak Data",
-            xaxis=dict(showline=True, showgrid=True),
-            yaxis=dict(showline=True, showgrid=True),
-            bargap=0.2,  # Optional: Adjusts the gap between bars
-            bargroupgap=0.1,  # Optional: Adjusts the gap between groups
-        )
-
-        st.plotly_chart(fig_histogram)
-    
-    elif sub_selected == 'Frequency Domain Analysis':
-       new_title = '<p style="font-family:Georgia; color:black; font-size: 25px; text-align: center;">Frequency Domain Analysis</p>'
-       st.markdown(new_title, unsafe_allow_html=True)
-       selected2 = option_menu(None, ["Tachogram", "Segmentation","Spectrum"], 
-       menu_icon="cast", default_index=0, orientation="horizontal")
-
-       if selected2 == 'Tachogram':
-          st.title('Tachogram BPM Baseline')
-          
-          # Plotting dengan Plotly
-          n = np.arange(0, ptp, 1, dtype=int)
-          fig = go.Figure(data=go.Scatter(x=n, y=bpm_rr_baseline, mode='lines'))
-          fig.update_layout(
-            title="TACHOGRAM",
-            xaxis_title="n",
-            yaxis_title="BPM",
-            xaxis=dict(showline=True, showgrid=True),
-            yaxis=dict(showline=True, showgrid=True)
-          )
-          # Display the figure in Streamlit
-          st.plotly_chart(fig) 
+   if sub_selected  == 'Input Data': 
+          # Plot using Plotly
+        fig = go.Figure()
         
-       elif selected2 == 'Segmentation':
-         optimizer_options = ['Subset 0-50', 'Subset 50-100', 'Subset 100-150', 'Subset 150-200', 'Subset 200-250','Subset 250-300', 'Subset 300-350', 'FFT TOTAL']
-         selected_optimizer = st.selectbox('Segmentation', optimizer_options)
-
-         if selected_optimizer == 'Subset 0-50':
-          st.title('Subset 0-50')
-          #segmentation data
-          st.header("Tachogram BPM Baseline (Segment 0-50)")
-          fig_segment = go.Figure(data=go.Scatter(x=n_subset, y=bpm_rr_baseline_subset, mode='lines'))
-          fig_segment.update_layout(
-             title="Segmented TACHOGRAM (0-50)",
-             xaxis_title="n",
-             yaxis_title="BPM",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-          #hamming window
-          st.header("Tachogram (Subset 0-50) with Hamming Window")
-          fig_segment = go.Figure(data=go.Scatter(x=n_subset, y=bpm_rr_baseline_windowed, mode='lines'))
-          fig_segment.update_layout(
-             title="WINDOWED TACHOGRAM (0-50)",
-             xaxis_title="n",
-             yaxis_title="BPM",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-          #FFT 
-          st.header("FFT of TACHOGRAM (Subset 0-50)")
-          fig_segment = go.Figure(data=go.Scatter(x=fft_freq_half, y=np.abs(fft_result_half), mode='lines'))
-          fig_segment.update_layout(
-             title="FFT 0-50",
-             xaxis_title="Frequency (Hz)",
-             yaxis_title="Magnitude",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-         elif selected_optimizer == 'Subset 50-100':
-          st.title('Subset 50-100')
-          #segmentation data
-          st.header("Tachogram BPM Baseline (Segment 50-100)")
-          fig_segment = go.Figure(data=go.Scatter(x=n_subset1, y=bpm_rr_baseline_subset1, mode='lines'))
-          fig_segment.update_layout(
-             title="Segmented TACHOGRAM (50-100)",
-             xaxis_title="n",
-             yaxis_title="BPM",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-          #hamming window
-          st.header("Tachogram (Subset 50-100) with Hamming Window")
-          fig_segment = go.Figure(data=go.Scatter(x=n_subset1, y=bpm_rr_baseline_windowed1, mode='lines'))
-          fig_segment.update_layout(
-             title="WINDOWED TACHOGRAM (50-100)",
-             xaxis_title="n",
-             yaxis_title="BPM",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-          #FFT 
-          st.header("FFT of TACHOGRAM (Subset 50-100)")
-          fig_segment = go.Figure(data=go.Scatter(x=fft_freq_half1, y=np.abs(fft_result_half1), mode='lines'))
-          fig_segment.update_layout(
-             title="FFT 50-100",
-             xaxis_title="Frequency (Hz)",
-             yaxis_title="Magnitude",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-         elif selected_optimizer == 'Subset 100-150':
-          st.title('Subset 100-150')
-          #segmentation data
-          st.header("Tachogram BPM Baseline (Segment 100-150)")
-          fig_segment = go.Figure(data=go.Scatter(x=n_subset2, y=bpm_rr_baseline_subset2, mode='lines'))
-          fig_segment.update_layout(
-             title="Segmented TACHOGRAM (100-150)",
-             xaxis_title="n",
-             yaxis_title="BPM",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-          #hamming window
-          st.header("Tachogram (Subset 100-150) with Hamming Window")
-          fig_segment = go.Figure(data=go.Scatter(x=n_subset2, y=bpm_rr_baseline_windowed2, mode='lines'))
-          fig_segment.update_layout(
-             title="WINDOWED TACHOGRAM (100-150)",
-             xaxis_title="n",
-             yaxis_title="BPM",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-          #FFT 
-          st.header("FFT of TACHOGRAM (Subset 100-150)")
-          fig_segment = go.Figure(data=go.Scatter(x=fft_freq_half2, y=np.abs(fft_result_half2), mode='lines'))
-          fig_segment.update_layout(
-             title="FFT 100-150",
-             xaxis_title="Frequency (Hz)",
-             yaxis_title="Magnitude",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
+        # Add the ECG signal trace
+        fig.add_trace(go.Scatter(x=elapsed_time, y=y, mode='lines', name='ECG Signal'))
         
-         elif selected_optimizer == 'Subset 150-200':
-          st.title('Subset 150-200')
-          #segmentation data
-          st.header("Tachogram BPM Baseline (Segment 150-200)")
-          fig_segment = go.Figure(data=go.Scatter(x=n_subset3, y=bpm_rr_baseline_subset3, mode='lines'))
-          fig_segment.update_layout(
-             title="Segmented TACHOGRAM (150-200)",
-             xaxis_title="n",
-             yaxis_title="BPM",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-          #hamming window
-          st.header("Tachogram (Subset 150-200) with Hamming Window")
-          fig_segment = go.Figure(data=go.Scatter(x=n_subset3, y=bpm_rr_baseline_windowed3, mode='lines'))
-          fig_segment.update_layout(
-             title="WINDOWED TACHOGRAM (150-200)",
-             xaxis_title="n",
-             yaxis_title="BPM",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-          #FFT 
-          st.header("FFT of TACHOGRAM (Subset 150-200)")
-          fig_segment = go.Figure(data=go.Scatter(x=fft_freq_half3, y=np.abs(fft_result_half3), mode='lines'))
-          fig_segment.update_layout(
-             title="FFT 150-200",
-             xaxis_title="Frequency (Hz)",
-             yaxis_title="Magnitude",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-    
-         elif selected_optimizer == 'Subset 200-250':
-          st.title('Subset 200-250')
-          #segmentation data
-          st.header("Tachogram BPM Baseline (Segment 200-250)")
-          fig_segment = go.Figure(data=go.Scatter(x=n_subset4, y=bpm_rr_baseline_subset4, mode='lines'))
-          fig_segment.update_layout(
-             title="Segmented TACHOGRAM (200-250)",
-             xaxis_title="n",
-             yaxis_title="BPM",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-          #hamming window
-          st.header("Tachogram (Subset 200-250) with Hamming Window")
-          fig_segment = go.Figure(data=go.Scatter(x=n_subset4, y=bpm_rr_baseline_windowed4, mode='lines'))
-          fig_segment.update_layout(
-             title="WINDOWED TACHOGRAM (200-250)",
-             xaxis_title="n",
-             yaxis_title="BPM",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-          #FFT 
-          st.header("FFT of TACHOGRAM (Subset 200-250)")
-          fig_segment = go.Figure(data=go.Scatter(x=fft_freq_half4, y=np.abs(fft_result_half4, mode='lines')))
-          fig_segment.update_layout(
-             title="FFT 200-250",
-             xaxis_title="Frequency (Hz)",
-             yaxis_title="Magnitude",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-        
-         elif selected_optimizer == 'Subset 250-300':
-          st.title('Subset 250-300')
-          #segmentation data
-          st.header("Tachogram BPM Baseline (Segment 250-300)")
-          fig_segment = go.Figure(data=go.Scatter(x=n_subset5, y=bpm_rr_baseline_subset5, mode='lines'))
-          fig_segment.update_layout(
-             title="Segmented TACHOGRAM (250-300)",
-             xaxis_title="n",
-             yaxis_title="BPM",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-          #hamming window
-          st.header("Tachogram (Subset 250-300) with Hamming Window")
-          fig_segment = go.Figure(data=go.Scatter(x=n_subset5, y=bpm_rr_baseline_windowed5, mode='lines'))
-          fig_segment.update_layout(
-             title="WINDOWED TACHOGRAM (250-300)",
-             xaxis_title="n",
-             yaxis_title="BPM",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-          #FFT 
-          st.header("FFT of TACHOGRAM (Subset 250-300)")
-          fig_segment = go.Figure(data=go.Scatter(x=fft_freq_half5, y=np.abs(fft_result_half5), mode='lines'))
-          fig_segment.update_layout(
-             title="FFT 250-300",
-             xaxis_title="Frequency (Hz)",
-             yaxis_title="Magnitude",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-         elif selected_optimizer == 'Subset 300-350':
-          st.title('Subset 300-350')
-          #segmentation data
-          st.header("Tachogram BPM Baseline (Segment 300-350)")
-          fig_segment = go.Figure(data=go.Scatter(x=n_subset6, y=bpm_rr_baseline_subset6, mode='lines'))
-          fig_segment.update_layout(
-             title="Segmented TACHOGRAM (300-350)",
-             xaxis_title="n",
-             yaxis_title="BPM",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-          #hamming window
-          st.header("Tachogram (Subset 300-350) with Hamming Window")
-          fig_segment = go.Figure(data=go.Scatter(x=n_subset6, y=bpm_rr_baseline_windowed6, mode='lines'))
-          fig_segment.update_layout(
-             title="WINDOWED TACHOGRAM (300-350)",
-             xaxis_title="n",
-             yaxis_title="BPM",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-          #FFT 
-          st.header("FFT of TACHOGRAM (Subset 300-350)")
-          fig_segment = go.Figure(data=go.Scatter(x=fft_freq_half6, y=np.abs(fft_result_half6), mode='lines'))
-          fig_segment.update_layout(
-             title="FFT 300-350",
-             xaxis_title="Frequency (Hz)",
-             yaxis_title="Magnitude",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-        ##FFT TOTAL
-         elif selected_optimizer == 'FFT TOTAL':
-          st.title('FFT TOTAL')
-          #segmentation data
-          st.header("Tachogram BPM Baseline (Segment 300-350)")
-          fig_segment = go.Figure(data=go.Scatter(x=fft_freq_total, y=np.abs(fft_result_total), mode='lines'))
-          fig_segment.update_layout(
-             title="FFT TOTAL of TACHOGRAM",
-             xaxis_title="Frequency (Hz)",
-             yaxis_title="Magnitude",
-             xaxis=dict(showline=True, showgrid=True),
-             yaxis=dict(showline=True, showgrid=True)
-             )
-          st.plotly_chart(fig_segment)
-
-       if selected2 == 'Spectrum':
-        st.title('FFT Spectrum (Welchs periodogram)')
-          
-        #segmentation data
-        st.header("FFT Spectrum")
-        fig_segment = go.Figure(data=go.Scatter(x=fft_freq_total, y=np.abs(fft_result_total), mode='lines', line=dict(color='black', width=0.3)))
-
-        # Add the filled regions for different frequency bands
-        fig_segment.add_trace(go.Scatter(x=x_vlf, y=y_vlf, fill='tozeroy', mode='none', fillcolor='rgba(166, 81, 216, 0.2)', name='VLF'))
-        fig_segment.add_trace(go.Scatter(x=x_lf, y=y_lf, fill='tozeroy', mode='none', fillcolor='rgba(81, 166, 216, 0.2)', name='LF'))
-        fig_segment.add_trace(go.Scatter(x=x_hf, y=y_hf, fill='tozeroy', mode='none', fillcolor='rgba(216, 166, 81, 0.2)', name='HF'))
-
         # Update the layout
-        fig_segment.update_layout(
-        title="FFT Spectrum (Welch's periodogram)",
-        xaxis_title="Frequency (Hz)",
-        yaxis_title="Density",
-        xaxis=dict(showline=True, showgrid=True, range=[0, 0.5]),
-        yaxis=dict(showline=True, showgrid=True, range=[0, max(np.abs(fft_result_total))]),
-        legend=dict(title="Frequency Bands")
+        fig.update_layout(
+            title='ECG Signal',
+            xaxis_title='Elapsed Time (s)',
+            yaxis_title='Amplitude',
+            width=1000,
+            height=400
         )
-
-        # Plot the figure using Streamlit
-        st.plotly_chart(fig_segment)
-
-    elif sub_selected == 'Non Liniear Analysis':
-       new_title = '<p style="font-family:Georgia; color:black; font-size: 25px; text-align: center;">Non Liniear Analysis</p>'
-       st.markdown(new_title, unsafe_allow_html=True) 
-      
         
-
-          
-
-
-
-
-
+        # Show the plot
+        st.plotly_chart(fig)
+    
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=elapsed_time[0:1000], y=y[0:1000], mode='lines', name='ECG (a)', line=dict(color='blue')))
+        fig.update_layout(
+            height=500,
+            width=1500,
+            title="ECG Signal",
+            xaxis_title="Elapsed Time (s)",
+            yaxis_title="Nilai",
         
-
+        )
+        st.plotly_chart(fig)
        
+   if sub_selected  == 'Filter Coeffs':
 
-        
+        fig = go.Figure(data=[go.Bar(x=n_list, y=h)])
+        fig.update_layout(title='h(n) Plot', xaxis_title='n', yaxis_title='g(n)')
+        st.plotly_chart(fig)
+         
+        fig = go.Figure(data=[go.Bar(x=n_list, y=g)])
+        fig.update_layout(title='g(n) Plot', xaxis_title='n', yaxis_title='g(n)')
+        st.plotly_chart(fig)
 
+        fig = go.Figure(data=go.Scatter(x=i_list, y=Hw[:len(i_list)]))
+        fig.update_layout(title='Hw Plot', xaxis_title='i', yaxis_title='Gw')
+        st.plotly_chart(fig)
+       
+        fig = go.Figure(data=go.Scatter(x=i_list, y=Gw[:len(i_list)]))
+        fig.update_layout(title='Gw Plot', xaxis_title='i', yaxis_title='Gw')
+        st.plotly_chart(fig)
+     
 
-    
-    
+         for i in range(1, 9):
+            trace = go.Scatter(x=i_list, y=Q[i], mode='lines', name=f'Q[{i}]')
+            traces.append(trace)
+            
+            
+            layout = go.Layout(title='Qj (f)',
+                               xaxis=dict(title=''),
+                               yaxis=dict(title=''))
+            
+            
+            fig = go.Figure(data=traces, layout=layout)
+            st.plotly_chart(fig)
+   
 
-
-
-        
-    
-
-
-
-
-
-
+            qj = np.zeros((6, 10000))
+            k_list = []
+            j = 1
+            
+            # Calculations
+            a = -(round (2*j) + round (2*(j-1)) - 2 )
+            st.write(f"a = {a}")
+            b=-(1- round(2**(j-1)))+1
+            st.write(f"b  = {b}")
+           
+            
+            for k in range(a, b):
+                k_list.append(k)
+                qj[1][k + abs(a)] = -2 * (dirac(k) - dirac(k+1))
+            # Visualization using Plotly
+            fig = go.Figure(data=[go.Bar(x=k_list, y=qj[1][0:len(k_list)])])
+            fig.update_layout(title='q1(k)', xaxis_title='', yaxis_title='')
+            
+            st.plotly_chart(fig)
  
-
-
+            k_list2 = []
+            j2 = 2
+            a2 = -(round(2*j2) + round(2*(j2-1)) - 2)
+            st.write(f"a = {a2}")
+            b2 = -(1 - round(2**(j2-1))) + 1
+            st.write(f"b  = {b2}")
+            
+            for k in range(a2, b2):
+                k_list2.append(k)
+                qj[2][k + abs(a2)] = -1/4 * (dirac(k-1) + 3*dirac(k) + 2*dirac(k+1) - 2*dirac(k+2) - 3*dirac(k+3) - dirac(k+4))
         
+            fig2 = go.Figure(data=[go.Bar(x=k_list2, y=qj[2][0:len(k_list2)])])
+            fig2.update_layout(title='q2(k)', xaxis_title='', yaxis_title='')
+            st.plotly_chart(fig2)
+         
+            k_list3 = []
+            j3 = 3
+            a3 = -(round(2*j3) + round(2*(j3-1)) - 2)
+            st.write(f"a = {a3}")
+            b3 = -(1 - round(2**(j3-1))) + 1
+            st.write(f"b  = {b3}")
+                
+            for k in range(a3, b3):
+                k_list3.append(k)
+                qj[3][k + abs(a3)] = -1/32 * (dirac(k-3) + 3*dirac(k-2) + 6*dirac(k-1) + 10*dirac(k)
+                                                  + 11*dirac(k+1) + 9*dirac(k+2) + 4*dirac(k+3) - 4*dirac(k+4) - 9*dirac(k+5)
+                                                  - 11*dirac(k+6) - 10*dirac(k+7) - 6*dirac(k+8) - 3*dirac(k+9) - dirac(k+10))
+            
+            fig3 = go.Figure(data=[go.Bar(x=k_list3, y=qj[3][0:len(k_list3)])])
+            fig3.update_layout(title='q3(k)', xaxis_title='', yaxis_title='')
+            st.plotly_chart(fig3)
+
+            k_list4 = []
+            j4 = 4
+            a4 = -(round(2*j4) + round(2*(j4-1)) - 2)
+            st.write(f"a  = {a4}")
+            b4 = -(1 - round(2**(j4-1))) + 1
+            st.write(f"b  = {b4}")
+                
+            for k in range(a4, b4):
+                k_list4.append(k)
+                qj[4][k + abs(a4)] = -1/256 * (dirac(k-7) + 3*dirac(k-6) + 6*dirac(k-5) + 10*dirac(k-4) + 15*dirac(k-3)
+                                                   + 21*dirac(k-2) + 28*dirac(k-1) + 36*dirac(k) + 41*dirac(k+1) + 43*dirac(k+2)
+                                                   + 42*dirac(k+3) + 38*dirac(k+4) + 31*dirac(k+5) + 21*dirac(k+6) + 8*dirac(k+7)
+                                                   - 8*dirac(k+8) - 21*dirac(k+9) - 31*dirac(k+10) - 38*dirac(k+11) - 42*dirac(k+12)
+                                                   - 43*dirac(k+13) - 41*dirac(k+14) - 36*dirac(k+15) - 28*dirac(k+16) - 21*dirac(k+17)
+                                                   - 15*dirac(k+18) - 10*dirac(k+19) - 6*dirac(k+20) - 3*dirac(k+21) - dirac(k+22))
+            
+            fig4 = go.Figure(data=[go.Bar(x=k_list4, y=qj[4][0:len(k_list4)])])
+            fig4.update_layout(title='q4(k)', xaxis_title='', yaxis_title='')
+            st.plotly_chart(fig4)
+
+                
+            k_list5 = []
+            j5 = 5
+            a5 = -(round(2*j5) + round(2*(j5-1)) - 2)
+            st.write(f"a = {a5}")
+            b5 = -(1 - round(2**(j5-1))) + 1
+            st.write(f"b  = {b5}")
+            
+            for k in range(a5, b5):
+                k_list5.append(k)
+                qj[5][k + abs(a5)] = -1/512 * (dirac(k-15) + 3*dirac(k-14) + 6*dirac(k-13) + 10*dirac(k-12) + 15*dirac(k-11) + 21*dirac(k-10)
+                                               + 28*dirac(k-9) + 36*dirac(k-8) + 45*dirac(k-7) + 55*dirac(k-6) + 66*dirac(k-5) + 78*dirac(k-4)
+                                               + 91*dirac(k-3) + 105*dirac(k-2) + 120*dirac(k-1) + 136*dirac(k) + 149*dirac(k+1) + 159*dirac(k+2)
+                                               + 166*dirac(k+3) + 170*dirac(k+4) + 171*dirac(k+5) + 169*dirac(k+6) + 164*dirac(k+7) + 156*dirac(k+8)
+                                               + 145*dirac(k+9) + 131*dirac(k+10) + 114*dirac(k+11) + 94*dirac(k+12) + 71*dirac(k+13) + 45*dirac(k+14)
+                                               + 16*dirac(k+15) - 16*dirac(k+16) - 45*dirac(k+17) - 71*dirac(k+18) - 94*dirac(k+19) - 114*dirac(k+20)
+                                               - 131*dirac(k+21) - 145*dirac(k+22) - 156*dirac(k+23) - 164*dirac(k+24) - 169*dirac(k+25)
+                                               - 171*dirac(k+26) - 170*dirac(k+27) - 166*dirac(k+28) - 159*dirac(k+29) - 149*dirac(k+30)
+                                               - 136*dirac(k+31) - 120*dirac(k+32) - 105*dirac(k+33) - 91*dirac(k+34) - 78*dirac(k+35)
+                                               - 66*dirac(k+36) - 55*dirac(k+37) - 45*dirac(k+38) - 36*dirac(k+39) - 28*dirac(k+40)
+                                               - 21*dirac(k+41) - 15*dirac(k+42) - 10*dirac(k+43) - 6*dirac(k+44) - 3*dirac(k+45)
+                                               - dirac(k+46))
         
-
-
-
-
-
-
-        
-
-
-
-
-
-        
-        
-    
+            fig5 = go.Figure(data=[go.Bar(x=k_list5, y=qj[5][0:len(k_list5)])])
+            fig5.update_layout(title='Fifth Part', xaxis_title='', yaxis_title='')
+            st.plotly_chart(fig5)
