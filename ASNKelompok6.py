@@ -282,9 +282,7 @@ if selected == "DWT":
         st.plotly_chart(fig)
        
    if sub_selected  == 'Filter Coeffs':
-     optimizer_options = ['', 'h(n) & g(n)', 'hw & gw','Qj (f)','q1(k)','q2(k)','q3(k)','q4(k)','q5(k)']
-     selected_optimizer = st.selectbox('Segmentation', optimizer_options)
-     if selected_optimizer == 'h(n) & g(n)':
+
         fig = go.Figure(data=[go.Bar(x=n_list, y=h)])
         fig.update_layout(title='h(n) Plot', xaxis_title='n', yaxis_title='g(n)')
         st.plotly_chart(fig)
@@ -292,7 +290,7 @@ if selected == "DWT":
         fig = go.Figure(data=[go.Bar(x=n_list, y=g)])
         fig.update_layout(title='g(n) Plot', xaxis_title='n', yaxis_title='g(n)')
         st.plotly_chart(fig)
-     if selected_optimizer == 'hw & gw':
+
         fig = go.Figure(data=go.Scatter(x=i_list, y=Hw[:len(i_list)]))
         fig.update_layout(title='Hw Plot', xaxis_title='i', yaxis_title='Gw')
         st.plotly_chart(fig)
@@ -301,7 +299,7 @@ if selected == "DWT":
         fig.update_layout(title='Gw Plot', xaxis_title='i', yaxis_title='Gw')
         st.plotly_chart(fig)
      
-     if selected_optimizer == 'Qj (f)':
+
          for i in range(1, 9):
             trace = go.Scatter(x=i_list, y=Q[i], mode='lines', name=f'Q[{i}]')
             traces.append(trace)
@@ -314,7 +312,7 @@ if selected == "DWT":
             
             fig = go.Figure(data=traces, layout=layout)
             st.plotly_chart(fig)
-     if selected_optimizer == 'q1(k)':
+   
 
             qj = np.zeros((6, 10000))
             k_list = []
@@ -335,7 +333,7 @@ if selected == "DWT":
             fig.update_layout(title='q1(k)', xaxis_title='', yaxis_title='')
             
             st.plotly_chart(fig)
-     if selected_optimizer == 'q2(k)':
+     
             k_list2 = []
             j2 = 2
             a2 = -(round(2**j2) + round(2**(j2-1)) - 2)
@@ -350,7 +348,7 @@ if selected == "DWT":
             fig2 = go.Figure(data=[go.Bar(x=k_list2, y=qj[2][0:len(k_list2)])])
             fig2.update_layout(title='q2(k)', xaxis_title='', yaxis_title='')
             st.plotly_chart(fig2)
-     if selected_optimizer == 'q3(k)':
+    
             k_list3 = []
             j3 = 3
             a3 = -(round(2**j3) + round(2**(j3-1)) - 2)
@@ -367,7 +365,7 @@ if selected == "DWT":
             fig3 = go.Figure(data=[go.Bar(x=k_list3, y=qj[3][0:len(k_list3)])])
             fig3.update_layout(title='q3(k)', xaxis_title='', yaxis_title='')
             st.plotly_chart(fig3)
-     if selected_optimizer == 'q4(k)':
+    
             k_list4 = []
             j4 = 4
             a4 = -(round(2**j4) + round(2**(j4-1)) - 2)
@@ -387,7 +385,7 @@ if selected == "DWT":
             fig4 = go.Figure(data=[go.Bar(x=k_list4, y=qj[4][0:len(k_list4)])])
             fig4.update_layout(title='q4(k)', xaxis_title='', yaxis_title='')
             st.plotly_chart(fig4)
-     if selected_optimizer == 'q5(k)':
+    
                 
             k_list5 = []
             j5 = 5
