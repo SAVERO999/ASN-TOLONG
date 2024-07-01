@@ -446,7 +446,7 @@ if selected == "DWT":
         st.plotly_chart(fig)
      
 
-         for i in range(1, 9):
+        for i in range(1, 9):
             trace = go.Scatter(x=i_list, y=Q[i], mode='lines', name=f'Q[{i}]')
             traces.append(trace)
             
@@ -471,9 +471,9 @@ if selected == "DWT":
             st.write(f"b  = {b}")
            
             
-            for k in range(a, b):
-                k_list.append(k)
-                qj[1][k + abs(a)] = -2 * (dirac(k) - dirac(k+1))
+        for k in range(a, b):
+            k_list.append(k)
+            qj[1][k + abs(a)] = -2 * (dirac(k) - dirac(k+1))
             # Visualization using Plotly
             fig = go.Figure(data=[go.Bar(x=k_list, y=qj[1][0:len(k_list)])])
             fig.update_layout(title='q1(k)', xaxis_title='', yaxis_title='')
@@ -487,9 +487,9 @@ if selected == "DWT":
             b2 = -(1 - round(2**(j2-1))) + 1
             st.write(f"b  = {b2}")
             
-            for k in range(a2, b2):
-                k_list2.append(k)
-                qj[2][k + abs(a2)] = -1/4 * (dirac(k-1) + 3*dirac(k) + 2*dirac(k+1) - 2*dirac(k+2) - 3*dirac(k+3) - dirac(k+4))
+        for k in range(a2, b2):
+            k_list2.append(k)
+            qj[2][k + abs(a2)] = -1/4 * (dirac(k-1) + 3*dirac(k) + 2*dirac(k+1) - 2*dirac(k+2) - 3*dirac(k+3) - dirac(k+4))
         
             fig2 = go.Figure(data=[go.Bar(x=k_list2, y=qj[2][0:len(k_list2)])])
             fig2.update_layout(title='q2(k)', xaxis_title='', yaxis_title='')
@@ -502,9 +502,9 @@ if selected == "DWT":
             b3 = -(1 - round(2**(j3-1))) + 1
             st.write(f"b  = {b3}")
                 
-            for k in range(a3, b3):
-                k_list3.append(k)
-                qj[3][k + abs(a3)] = -1/32 * (dirac(k-3) + 3*dirac(k-2) + 6*dirac(k-1) + 10*dirac(k)
+        for k in range(a3, b3):
+            k_list3.append(k)
+                    qj[3][k + abs(a3)] = -1/32 * (dirac(k-3) + 3*dirac(k-2) + 6*dirac(k-1) + 10*dirac(k)
                                                   + 11*dirac(k+1) + 9*dirac(k+2) + 4*dirac(k+3) - 4*dirac(k+4) - 9*dirac(k+5)
                                                   - 11*dirac(k+6) - 10*dirac(k+7) - 6*dirac(k+8) - 3*dirac(k+9) - dirac(k+10))
             
@@ -519,7 +519,7 @@ if selected == "DWT":
             b4 = -(1 - round(2**(j4-1))) + 1
             st.write(f"b  = {b4}")
                 
-            for k in range(a4, b4):
+        for k in range(a4, b4):
                 k_list4.append(k)
                 qj[4][k + abs(a4)] = -1/256 * (dirac(k-7) + 3*dirac(k-6) + 6*dirac(k-5) + 10*dirac(k-4) + 15*dirac(k-3)
                                                    + 21*dirac(k-2) + 28*dirac(k-1) + 36*dirac(k) + 41*dirac(k+1) + 43*dirac(k+2)
